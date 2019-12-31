@@ -55,8 +55,11 @@ public class ConfigHandler extends CraftHandler implements IConfigHandler {
 	}
 
 	private void createConfigExample() {
-		File outputFile = new File(this.plugin.getDataFolder(), "config.example_enabledworlds.yml");
+		if (this.plugin.getDataFolder().exists()) {
+			this.plugin.getDataFolder().mkdirs();
+		}
 
+		File outputFile = new File(this.plugin.getDataFolder(), "config.example_enabledworlds.yml");
 		if (outputFile.exists())
 			return;
 
