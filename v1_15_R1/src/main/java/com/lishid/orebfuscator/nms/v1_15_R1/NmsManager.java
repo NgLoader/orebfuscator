@@ -62,13 +62,14 @@ public class NmsManager implements INmsManager {
 		this.configDefaults = new ConfigDefaults();
 
 		// Default World
-		this.configDefaults.defaultProximityHiderBlockIds = convertMaterialsToIds(new Material[] { Material.DISPENSER,
-				Material.SPAWNER, Material.CHEST, Material.HOPPER, Material.CRAFTING_TABLE, Material.FURNACE,
-				Material.ENCHANTING_TABLE, Material.EMERALD_ORE, Material.ENDER_CHEST, Material.ANVIL,
-				Material.CHIPPED_ANVIL, Material.DAMAGED_ANVIL, Material.TRAPPED_CHEST, Material.DIAMOND_ORE });
+		this.configDefaults.defaultProximityHiderBlockIds = convertMaterialsToIds(
+				new Material[] { Material.DISPENSER, Material.SPAWNER, Material.CHEST, Material.HOPPER,
+						Material.CRAFTING_TABLE, Material.FURNACE, Material.ENCHANTING_TABLE, Material.ENDER_CHEST,
+						Material.ANVIL, Material.CHIPPED_ANVIL, Material.DAMAGED_ANVIL, Material.TRAPPED_CHEST,
+						Material.EMERALD_ORE, Material.DIAMOND_ORE, Material.REDSTONE_ORE });
 
 		this.configDefaults.defaultDarknessBlockIds = convertMaterialsToIds(
-				new Material[] { Material.SPAWNER, Material.CHEST });
+				new Material[] { Material.SPAWNER, Material.CHEST, Material.TRAPPED_CHEST, Material.ENDER_CHEST });
 
 		this.configDefaults.defaultMode1BlockId = getMaterialIds(Material.STONE).iterator().next();
 		this.configDefaults.defaultProximityHiderSpecialBlockId = getMaterialIds(Material.STONE).iterator().next();
@@ -101,9 +102,10 @@ public class NmsManager implements INmsManager {
 				Material.LAPIS_ORE, Material.TNT, Material.MOSSY_COBBLESTONE, Material.OBSIDIAN, Material.DIAMOND_ORE,
 				Material.REDSTONE_ORE, Material.CLAY, Material.EMERALD_ORE });
 
-		this.configDefaults.normalWorldObfuscateBlockIds = convertMaterialsToIds(new Material[] { Material.GOLD_ORE,
-				Material.IRON_ORE, Material.COAL_ORE, Material.LAPIS_ORE, Material.CHEST, Material.DIAMOND_ORE,
-				Material.ENDER_CHEST, Material.REDSTONE_ORE, Material.CLAY, Material.EMERALD_ORE });
+		this.configDefaults.normalWorldObfuscateBlockIds = convertMaterialsToIds(
+				new Material[] { Material.GOLD_ORE, Material.IRON_ORE, Material.COAL_ORE, Material.LAPIS_ORE,
+						Material.CHEST, Material.TRAPPED_CHEST, Material.ENDER_CHEST, Material.DIAMOND_ORE,
+						Material.ENDER_CHEST, Material.REDSTONE_ORE, Material.CLAY, Material.EMERALD_ORE });
 
 		this.configDefaults.normalWorldMode1BlockId = getMaterialIds(Material.STONE).iterator().next();
 

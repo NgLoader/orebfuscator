@@ -39,7 +39,7 @@
 		<dependency>
 			<groupId>com.lishid</groupId>
 			<artifactId>orebfuscator-api</artifactId>
-			<version>api</version>
+			<version>${orebfuscator-version}</version>
 			<type>jar</type>
 		</dependency>
 	</dependencies>
