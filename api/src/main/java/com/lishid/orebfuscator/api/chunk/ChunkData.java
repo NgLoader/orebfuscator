@@ -14,4 +14,6 @@ public class ChunkData {
 	public boolean isOverworld;
 	public boolean useCache;
 	public List<NbtCompound> blockEntities;
+
+	public boolean worldGuardRegion = false;
 }
