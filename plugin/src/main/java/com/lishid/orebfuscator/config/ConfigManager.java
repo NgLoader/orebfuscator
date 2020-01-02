@@ -108,6 +108,7 @@ public class ConfigManager implements IConfigManager {
 		boolean noObfuscationForPermission = this.getBoolean("Booleans.NoObfuscationForPermission", false);
 		boolean loginNotification = this.getBoolean("Booleans.LoginNotification", true);
 		byte[] transparentBlocks = this.generateTransparentBlocks(engineMode);
+		boolean worldGuard = this.getBoolean("Booleans.WorldGuardSupport", false);
 
 		this.orebfuscatorConfig.setUseCache(useCache);
 		this.orebfuscatorConfig.setMaxLoadedCacheFiles(maxLoadedCacheFiles);
@@ -124,6 +125,7 @@ public class ConfigManager implements IConfigManager {
 		this.orebfuscatorConfig.setNoObfuscationForPermission(noObfuscationForPermission);
 		this.orebfuscatorConfig.setLoginNotification(loginNotification);
 		this.orebfuscatorConfig.setTransparentBlocks(transparentBlocks);
+		this.orebfuscatorConfig.setWorldGuardSupport(worldGuard);
 
 		new WorldReader(this.plugin, this.logger, this.orebfuscatorConfig, this.materialReader).load();
 

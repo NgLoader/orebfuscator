@@ -1,13 +1,21 @@
+api-version: 1.13
+
 name: ${project.name}
-main: com.lishid.orebfuscator.CraftOrebfuscator
 version: ${project.version}
+
+main: com.lishid.orebfuscator.CraftOrebfuscator
+
 author: lishid
 authors: [Aleksey-Terzi, ProgrammerDan, SydMontague, NgLoader]
+
 depend: [ProtocolLib]
-loadbefore: [ProtocolLib]
+softdepend: [WorldGuard]
+loadbefore: [ProtocolLib, WorldGuard]
+
 load: startup
-api-version: 1.13
+
 description: 'The most powerful and efficient Anti Xray plugin compatible with any CraftBukkit fork!'
+
 commands:
   ofc:
     description: Manage Orebfuscator.
@@ -29,3 +37,21 @@ commands:
            /<command> <enable/disable> notification - Toggle Login Notification
            /<command> <enable/disable> <worldname> - Toggle world's obfuscation
            /<command> use <blacklist/whitelist> - Toggle if Worlds list is using as blacklist or whitelist  
+
+permissions:
+  orebfuscator.*:
+    description: Own all ofc permissions
+    default: false
+    children:
+      orebfuscator.deobfuscate: true
+      orebfuscator.region.*: true
+      orebfuscator.world.*: true
+  orebfuscator.deobfuscate:
+    description: No deobfuscate in all regions and worlds
+    default: false
+  orebfuscator.region.*:
+    description: No deobfuscate in all regions
+    default: false
+  orebfuscator.world.*:
+    description: No deobfuscate in all worlds
+    default: false

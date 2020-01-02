@@ -6,7 +6,6 @@
 
 package com.lishid.orebfuscator.nms.v1_14_R1;
 
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -35,11 +34,21 @@ import net.minecraft.server.v1_14_R1.IBlockData;
 import net.minecraft.server.v1_14_R1.IChatBaseComponent;
 import net.minecraft.server.v1_14_R1.Packet;
 import net.minecraft.server.v1_14_R1.TileEntity;
-import net.minecraft.server.v1_14_R1.WorldServer;
 
 public class NmsManager implements INmsManager {
 
-	private static final int BITS_PER_BLOCK = 14;
+	private static IBlockData getBlockData(World world, int x, int y, int z, boolean loadChunk) {
+		int chunkX = x >> 4;
+		int chunkZ = z >> 4;
+
+		ChunkProviderServer chunkProviderServer = ((CraftWorld) world).getHandle().getChunkProvider();
+
+		if (!loadChunk && !chunkProviderServer.isLoaded(chunkX, chunkZ))
+			return null;
+
+		Chunk chunk = chunkProviderServer.getChunkAt(chunkX, chunkZ, true);
+		return chunk != null ? chunk.getType(new BlockPosition(x, y, z)) : null;
+	}
 
 	private int BLOCK_ID_CAVE_AIR;
 	private Set<Integer> BLOCK_ID_AIRS;
@@ -53,63 +62,126 @@ public class NmsManager implements INmsManager {
 		this.initBlockIds();
 
 		this.BLOCK_ID_CAVE_AIR = getMaterialIds(Material.CAVE_AIR).iterator().next();
-		this.BLOCK_ID_AIRS = convertMaterialsToSet(
-				new Material[] { Material.AIR, Material.CAVE_AIR, Material.VOID_AIR });
-		this.BLOCK_ID_SIGNS = convertMaterialsToSet(new Material[] { Material.ACACIA_SIGN, Material.BIRCH_SIGN,
-				Material.DARK_OAK_SIGN, Material.JUNGLE_SIGN, Material.OAK_SIGN, Material.SPRUCE_SIGN,
-				Material.ACACIA_WALL_SIGN, Material.BIRCH_WALL_SIGN, Material.DARK_OAK_WALL_SIGN,
-				Material.JUNGLE_WALL_SIGN, Material.OAK_WALL_SIGN, Material.SPRUCE_WALL_SIGN });
+		this.BLOCK_ID_AIRS = convertMaterialsToSet(new Material[] {
+				Material.AIR,
+				Material.CAVE_AIR,
+				Material.VOID_AIR
+			});
+		this.BLOCK_ID_SIGNS = convertMaterialsToSet(new Material[] {
+				Material.ACACIA_SIGN,
+				Material.BIRCH_SIGN,
+				Material.DARK_OAK_SIGN,
+				Material.JUNGLE_SIGN,
+				Material.OAK_SIGN,
+				Material.SPRUCE_SIGN,
+				Material.ACACIA_WALL_SIGN,
+				Material.BIRCH_WALL_SIGN,
+				Material.DARK_OAK_WALL_SIGN,
+				Material.JUNGLE_WALL_SIGN,
+				Material.OAK_WALL_SIGN,
+				Material.SPRUCE_WALL_SIGN
+			});
 
 		this.configDefaults = new ConfigDefaults();
 
 		// Default World
-		this.configDefaults.defaultProximityHiderBlockIds = convertMaterialsToIds(new Material[] { Material.DISPENSER,
-				Material.SPAWNER, Material.CHEST, Material.HOPPER, Material.CRAFTING_TABLE, Material.FURNACE,
-				Material.ENCHANTING_TABLE, Material.EMERALD_ORE, Material.ENDER_CHEST, Material.ANVIL,
-				Material.CHIPPED_ANVIL, Material.DAMAGED_ANVIL, Material.TRAPPED_CHEST, Material.DIAMOND_ORE });
+		this.configDefaults.defaultProximityHiderBlockIds = convertMaterialsToIds(new Material[] {
+				Material.DISPENSER,
+				Material.SPAWNER,
+				Material.CHEST,
+				Material.HOPPER,
+				Material.CRAFTING_TABLE,
+				Material.FURNACE,
+				Material.ENCHANTING_TABLE,
+				Material.EMERALD_ORE,
+				Material.ENDER_CHEST,
+				Material.ANVIL,
+				Material.CHIPPED_ANVIL,
+				Material.DAMAGED_ANVIL,
+				Material.TRAPPED_CHEST,
+				Material.DIAMOND_ORE
+			});
 
-		this.configDefaults.defaultDarknessBlockIds = convertMaterialsToIds(
-				new Material[] { Material.SPAWNER, Material.CHEST });
+		this.configDefaults.defaultDarknessBlockIds = convertMaterialsToIds(new Material[] {
+				Material.SPAWNER,
+				Material.CHEST
+			});
 
 		this.configDefaults.defaultMode1BlockId = getMaterialIds(Material.STONE).iterator().next();
 		this.configDefaults.defaultProximityHiderSpecialBlockId = getMaterialIds(Material.STONE).iterator().next();
 
 		// The End
-		this.configDefaults.endWorldRandomBlockIds = convertMaterialsToIds(new Material[] { Material.BEDROCK,
-				Material.OBSIDIAN, Material.END_STONE, Material.PURPUR_BLOCK, Material.END_STONE_BRICKS });
+		this.configDefaults.endWorldRandomBlockIds = convertMaterialsToIds(new Material[] {
+				Material.BEDROCK,
+				Material.OBSIDIAN,
+				Material.END_STONE,
+				Material.PURPUR_BLOCK,
+				Material.END_STONE_BRICKS
+			});
 
-		this.configDefaults.endWorldObfuscateBlockIds = convertMaterialsToIds(new Material[] { Material.END_STONE });
+		this.configDefaults.endWorldObfuscateBlockIds = convertMaterialsToIds(new Material[] {
+				Material.END_STONE
+			});
 
 		this.configDefaults.endWorldMode1BlockId = getMaterialIds(Material.END_STONE).iterator().next();
-		this.configDefaults.endWorldRequiredObfuscateBlockIds = convertMaterialsToIds(
-				new Material[] { Material.END_STONE });
+		this.configDefaults.endWorldRequiredObfuscateBlockIds = convertMaterialsToIds(new Material[] {
+				Material.END_STONE
+			});
 
 		// Nether World
-		this.configDefaults.netherWorldRandomBlockIds = convertMaterialsToIds(new Material[] { Material.GRAVEL,
-				Material.NETHERRACK, Material.SOUL_SAND, Material.NETHER_BRICKS, Material.NETHER_QUARTZ_ORE });
+		this.configDefaults.netherWorldRandomBlockIds = convertMaterialsToIds(new Material[] {
+				Material.GRAVEL,
+				Material.NETHERRACK,
+				Material.SOUL_SAND,
+				Material.NETHER_BRICKS,
+				Material.NETHER_QUARTZ_ORE
+			});
 
-		this.configDefaults.netherWorldObfuscateBlockIds = convertMaterialsToIds(
-				new Material[] { Material.NETHERRACK, Material.NETHER_QUARTZ_ORE });
+		this.configDefaults.netherWorldObfuscateBlockIds = convertMaterialsToIds(new Material[] {
+				Material.NETHERRACK,
+				Material.NETHER_QUARTZ_ORE
+			});
 
 		this.configDefaults.netherWorldMode1BlockId = getMaterialIds(Material.NETHERRACK).iterator().next();
 
-		this.configDefaults.netherWorldRequiredObfuscateBlockIds = convertMaterialsToIds(
-				new Material[] { Material.NETHERRACK });
+		this.configDefaults.netherWorldRequiredObfuscateBlockIds = convertMaterialsToIds(new Material[] {
+				Material.NETHERRACK
+			});
 
 		// Normal World
-		this.configDefaults.normalWorldRandomBlockIds = convertMaterialsToIds(new Material[] { Material.STONE,
-				Material.COBBLESTONE, Material.OAK_PLANKS, Material.GOLD_ORE, Material.IRON_ORE, Material.COAL_ORE,
-				Material.LAPIS_ORE, Material.TNT, Material.MOSSY_COBBLESTONE, Material.OBSIDIAN, Material.DIAMOND_ORE,
-				Material.REDSTONE_ORE, Material.CLAY, Material.EMERALD_ORE });
+		this.configDefaults.normalWorldRandomBlockIds = convertMaterialsToIds(new Material[] {
+				Material.STONE,
+				Material.EMERALD_ORE,
+				Material.GOLD_ORE,
+				Material.IRON_ORE,
+				Material.COAL_ORE,
+				Material.LAPIS_ORE,
+				Material.DIAMOND_ORE,
+				Material.REDSTONE_ORE,
+				Material.OAK_PLANKS,
+				Material.COBBLESTONE,
+				Material.TNT,
+				Material.MOSSY_COBBLESTONE,
+				Material.OBSIDIAN,
+				Material.CLAY
+			});
 
-		this.configDefaults.normalWorldObfuscateBlockIds = convertMaterialsToIds(new Material[] { Material.GOLD_ORE,
-				Material.IRON_ORE, Material.COAL_ORE, Material.LAPIS_ORE, Material.CHEST, Material.DIAMOND_ORE,
-				Material.ENDER_CHEST, Material.REDSTONE_ORE, Material.CLAY, Material.EMERALD_ORE });
+		this.configDefaults.normalWorldObfuscateBlockIds = convertMaterialsToIds(new Material[] {
+				Material.DIAMOND_ORE,
+				Material.GOLD_ORE,
+				Material.IRON_ORE,
+				Material.COAL_ORE,
+				Material.LAPIS_ORE,
+				Material.REDSTONE_ORE,
+				Material.EMERALD_ORE,
+				Material.CHEST,
+				Material.ENDER_CHEST,
+				Material.CLAY
+			});
 
 		this.configDefaults.normalWorldMode1BlockId = getMaterialIds(Material.STONE).iterator().next();
 
-		this.configDefaults.normalWorldRequiredObfuscateBlockIds = convertMaterialsToIds(
-				new Material[] { Material.STONE });
+		this.configDefaults.normalWorldRequiredObfuscateBlockIds = convertMaterialsToIds(new Material[] { Material.STONE });
 	}
 
 	private void initBlockIds() {
@@ -149,35 +221,26 @@ public class NmsManager implements INmsManager {
 	}
 
 	public void updateBlockTileEntity(BlockCoord blockCoord, Player player) {
-		CraftWorld world = (CraftWorld) player.getWorld();
-		// 1.13.2 has made this quite a bit different in later builds.
-		TileEntity tileEntity = null;
 		try {
-			Method getTileEntityAt = world.getClass().getMethod("getTileEntityAt", int.class, int.class, int.class);
-			tileEntity = (TileEntity) getTileEntityAt.invoke(world, blockCoord.x, blockCoord.y, blockCoord.z);
-		} catch (NoSuchMethodException nsme) {
-			tileEntity = world.getHandle().getTileEntity(new BlockPosition(blockCoord.x, blockCoord.y, blockCoord.z));
+			CraftWorld world = (CraftWorld) player.getWorld();
+			TileEntity tileEntity = world.getHandle().getTileEntity(new BlockPosition(blockCoord.x, blockCoord.y, blockCoord.z));
+
+			if (tileEntity == null) {
+				return;
+			}
+
+			Packet<?> packet = tileEntity.getUpdatePacket();
+			if (packet != null) {
+				((CraftPlayer) player).getHandle().playerConnection.sendPacket(packet);
+			}
 		} catch (Exception e) {
-			return;
-		}
-
-		if (tileEntity == null) {
-			return;
-		}
-
-		Packet<?> packet = tileEntity.getUpdatePacket();
-
-		if (packet != null) {
-			CraftPlayer player2 = (CraftPlayer) player;
-			player2.getHandle().playerConnection.sendPacket(packet);
+			e.printStackTrace();
 		}
 	}
 
 	public void notifyBlockChange(World world, IBlockInfo blockInfo) {
-		BlockPosition blockPosition = new BlockPosition(blockInfo.getX(), blockInfo.getY(), blockInfo.getZ());
 		IBlockData blockData = ((BlockInfo) blockInfo).getBlockData();
-
-		((CraftWorld) world).getHandle().notify(blockPosition, blockData, blockData, 0);
+		((CraftWorld) world).getHandle().notify(new BlockPosition(blockInfo.getX(), blockInfo.getY(), blockInfo.getZ()), blockData, blockData, 0);
 	}
 
 	public int getBlockLightLevel(World world, int x, int y, int z) {
@@ -185,13 +248,12 @@ public class NmsManager implements INmsManager {
 	}
 
 	public IBlockInfo getBlockInfo(World world, int x, int y, int z) {
-		IBlockData blockData = getBlockData(world, x, y, z, false);
-
+		IBlockData blockData = NmsManager.getBlockData(world, x, y, z, false);
 		return blockData != null ? new BlockInfo(x, y, z, blockData) : null;
 	}
 
 	public int loadChunkAndGetBlockId(World world, int x, int y, int z) {
-		IBlockData blockData = getBlockData(world, x, y, z, true);
+		IBlockData blockData = NmsManager.getBlockData(world, x, y, z, true);
 		return blockData != null ? Block.getCombinedId(blockData) : -1;
 	}
 
@@ -201,16 +263,15 @@ public class NmsManager implements INmsManager {
 	}
 
 	public boolean isHoe(Material item) {
-		return item == Material.WOODEN_HOE || item == Material.STONE_HOE || item == Material.IRON_HOE
-				|| item == Material.GOLDEN_HOE || item == Material.DIAMOND_HOE;
+		return item == Material.WOODEN_HOE || item == Material.STONE_HOE || item == Material.IRON_HOE || item == Material.GOLDEN_HOE || item == Material.DIAMOND_HOE;
 	}
 
 	public boolean isSign(int combinedBlockId) {
-		return BLOCK_ID_SIGNS.contains(combinedBlockId);
+		return this.BLOCK_ID_SIGNS.contains(combinedBlockId);
 	}
 
 	public boolean isAir(int combinedBlockId) {
-		return BLOCK_ID_AIRS.contains(combinedBlockId);
+		return this.BLOCK_ID_AIRS.contains(combinedBlockId);
 	}
 
 	public boolean isTileEntity(int combinedBlockId) {
@@ -218,11 +279,11 @@ public class NmsManager implements INmsManager {
 	}
 
 	public int getCaveAirBlockId() {
-		return BLOCK_ID_CAVE_AIR;
+		return this.BLOCK_ID_CAVE_AIR;
 	}
 
 	public int getBitsPerBlock() {
-		return NmsManager.BITS_PER_BLOCK;
+		return 14;
 	}
 
 	public boolean canApplyPhysics(Material blockMaterial) {
@@ -235,32 +296,13 @@ public class NmsManager implements INmsManager {
 	}
 
 	public boolean sendBlockChange(Player player, Location blockLocation) {
-		IBlockData blockData = getBlockData(blockLocation.getWorld(), blockLocation.getBlockX(),
-				blockLocation.getBlockY(), blockLocation.getBlockZ(), false);
+		IBlockData blockData = NmsManager.getBlockData(blockLocation.getWorld(), blockLocation.getBlockX(), blockLocation.getBlockY(), blockLocation.getBlockZ(), false);
 
 		if (blockData == null)
 			return false;
 
-		CraftBlockData craftBlockData = CraftBlockData.fromData(blockData);
-
-		player.sendBlockChange(blockLocation, craftBlockData);
-
+		player.sendBlockChange(blockLocation, CraftBlockData.fromData(blockData));
 		return true;
-	}
-
-	private static IBlockData getBlockData(World world, int x, int y, int z, boolean loadChunk) {
-		int chunkX = x >> 4;
-		int chunkZ = z >> 4;
-
-		WorldServer worldServer = ((CraftWorld) world).getHandle();
-		ChunkProviderServer chunkProviderServer = worldServer.getChunkProvider();
-
-		if (!loadChunk && !chunkProviderServer.isLoaded(chunkX, chunkZ))
-			return null;
-
-		Chunk chunk = chunkProviderServer.getChunkAt(chunkX, chunkZ, true);
-
-		return chunk != null ? chunk.getType(new BlockPosition(x, y, z)) : null;
 	}
 
 	private Set<Integer> convertMaterialsToSet(Material[] materials) {
@@ -274,7 +316,7 @@ public class NmsManager implements INmsManager {
 	}
 
 	private int[] convertMaterialsToIds(Material[] materials) {
-		Set<Integer> ids = convertMaterialsToSet(materials);
+		Set<Integer> ids = this.convertMaterialsToSet(materials);
 
 		int[] result = new int[ids.size()];
 		int index = 0;
@@ -294,15 +336,5 @@ public class NmsManager implements INmsManager {
 	@Override
 	public boolean hasBlockCount() {
 		return true;
-	}
-
-	@Override
-	public boolean wasNmsFound() {
-		return false;
-	}
-
-	@Override
-	public String getServerVersion() {
-		return null;
 	}
 }

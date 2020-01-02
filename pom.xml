@@ -8,7 +8,7 @@
 	<version>repo</version>
 	<packaging>pom</packaging>
 
-	<name>Orebfuscator4 Repo</name>
+	<name>Orebfuscator5</name>
 	<url>http://dev.bukkit.org/server-mods/orebfuscator/</url>
 
 	<properties>
@@ -22,11 +22,15 @@
 		</repository>
 		<repository>
 			<id>dmulloy2-repo</id>
-			<url>http://repo.dmulloy2.net/content/groups/public/</url>
+			<url>https://repo.dmulloy2.net/nexus/repository/public/</url>
 		</repository>
 		<repository>
 			<id>elmakers-repo</id>
 			<url>http://maven.elmakers.com/repository</url>
+		</repository>
+		<repository>
+			<id>sk89q-repo</id>
+			<url>http://maven.sk89q.com/repo/</url>
 		</repository>
 	</repositories>
 

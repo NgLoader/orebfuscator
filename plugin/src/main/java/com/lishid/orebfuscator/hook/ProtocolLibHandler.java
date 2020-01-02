@@ -95,7 +95,6 @@ public class ProtocolLibHandler extends CraftHandler implements IProtocolLibHand
 	private void registerListener() {
 		this.packetListeners.add(new PacketAdapter(plugin, PacketType.Play.Server.MAP_CHUNK) {
 
-			@SuppressWarnings("rawtypes")
 			@Override
 			public void onPacketSending(PacketEvent event) {
 				ChunkData chunkData = null;
@@ -118,6 +117,7 @@ public class ProtocolLibHandler extends CraftHandler implements IProtocolLibHand
 					StructureModifier<Integer> ints = packet.getIntegers();
 					StructureModifier<byte[]> byteArray = packet.getByteArrays();
 					StructureModifier<Boolean> bools = packet.getBooleans();
+					@SuppressWarnings("rawtypes")
 					StructureModifier<List> list = packet.getSpecificModifier(List.class);
 
 					List<?> nmsTags = list.read(0);

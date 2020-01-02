@@ -40,6 +40,8 @@ public class OrebfuscatorConfig implements IOrebfuscatorConfig {
 	private IWorldConfig netherWorld;
 	private Map<String, IWorldConfig> worlds;
 
+	private boolean worldGuard;
+
 	private boolean proximityHiderEnabled;
 
 	private static final int antiHitHackDecrementFactor = 1000;
@@ -237,19 +239,19 @@ public class OrebfuscatorConfig implements IOrebfuscatorConfig {
 	}
 
 	public int getAntiHitHackDecrementFactor() {
-		return antiHitHackDecrementFactor;
+		return OrebfuscatorConfig.antiHitHackDecrementFactor;
 	}
 
 	public int getAntiHitHackMaxViolation() {
-		return antiHitHackMaxViolation;
+		return OrebfuscatorConfig.antiHitHackMaxViolation;
 	}
 
 	public int getProximityHiderRate() {
-		return proximityHiderRate;
+		return OrebfuscatorConfig.proximityHiderRate;
 	}
 
 	public long getCacheCleanRate() {
-		return cacheCleanRate;
+		return OrebfuscatorConfig.cacheCleanRate;
 	}
 
 	// Helper methods
@@ -278,7 +280,7 @@ public class OrebfuscatorConfig implements IOrebfuscatorConfig {
 		boolean ret = false;
 
 		try {
-			ret = this.noObfuscationForPermission && player.hasPermission("Orebfuscator.deobfuscate");
+			ret = this.noObfuscationForPermission && player.hasPermission("orebfuscator.deobfuscate");
 		} catch (Exception e) {
 			OFCLogger.log("Error while obtaining permissions for player" + player.getName() + ": " + e.getMessage());
 			e.printStackTrace();
@@ -297,5 +299,13 @@ public class OrebfuscatorConfig implements IOrebfuscatorConfig {
 			e.printStackTrace();
 		}
 		return ret;
+	}
+
+	public boolean isWorldGuardSupport() {
+		return this.worldGuard;
+	}
+
+	public void setWorldGuardSupport(boolean enabled) {
+		this.worldGuard = enabled;
 	}
 }

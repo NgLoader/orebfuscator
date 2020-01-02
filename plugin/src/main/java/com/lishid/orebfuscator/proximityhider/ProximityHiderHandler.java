@@ -80,7 +80,7 @@ public class ProximityHiderHandler extends CraftHandler implements IProximityHid
 	}
 
 	@Override
-	public boolean enableHandler() {
+	public boolean canEnable() {
 		return this.config.isProximityHiderEnabled();
 	}
 
@@ -227,7 +227,7 @@ public class ProximityHiderHandler extends CraftHandler implements IProximityHid
 			if (this.thread.isInterrupted() || this.thread.isAlive()) {
 				this.running.compareAndSet(this.running.get(), false);
 
-				if (!this.running.get() && this.enableHandler()) {
+				if (!this.running.get() && this.canEnable()) {
 					this.onEnable();
 				}
 			}

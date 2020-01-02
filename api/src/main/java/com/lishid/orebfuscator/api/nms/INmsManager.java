@@ -59,7 +59,11 @@ public interface INmsManager {
 
 	boolean hasBlockCount();
 
-	boolean wasNmsFound();
+	default boolean wasNmsFound() {
+		return false;
+	}
 
-	String getServerVersion();
+	default String getServerVersion() {
+		return null;
+	}
 }

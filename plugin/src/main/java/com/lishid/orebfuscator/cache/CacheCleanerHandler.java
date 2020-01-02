@@ -30,13 +30,13 @@ public class CacheCleanerHandler extends CraftHandler implements Runnable {
 	}
 
 	@Override
-	public void onEnable() {
-		this.task = this.plugin.getServer().getScheduler().runTaskTimerAsynchronously(this.plugin, this, 0, this.plugin.getConfigHandler().getConfig().getCacheCleanRate());
+	public boolean canEnable() {
+		return this.config.isEnabled() || this.config.getDeleteCacheFilesAfterDays() <= 0;
 	}
 
 	@Override
-	public boolean enableHandler() {
-		return this.config.isEnabled() || this.config.getDeleteCacheFilesAfterDays() <= 0;
+	public void onEnable() {
+		this.task = this.plugin.getServer().getScheduler().runTaskTimerAsynchronously(this.plugin, this, 0, this.plugin.getConfigHandler().getConfig().getCacheCleanRate());
 	}
 
 	@Override

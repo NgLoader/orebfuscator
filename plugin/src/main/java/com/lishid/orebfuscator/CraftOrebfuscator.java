@@ -29,6 +29,7 @@ import com.lishid.orebfuscator.api.chunk.IChunkMapHandler;
 import com.lishid.orebfuscator.api.config.IConfigHandler;
 import com.lishid.orebfuscator.api.hithack.IBlockHitHandler;
 import com.lishid.orebfuscator.api.hook.IProtocolLibHandler;
+import com.lishid.orebfuscator.api.hook.IWorldGuardHandler;
 import com.lishid.orebfuscator.api.nms.INmsManager;
 import com.lishid.orebfuscator.api.utils.IBlockUpdate;
 import com.lishid.orebfuscator.api.utils.ICalculations;
@@ -41,6 +42,7 @@ import com.lishid.orebfuscator.handler.CraftHandler;
 import com.lishid.orebfuscator.handler.NmsHandler;
 import com.lishid.orebfuscator.hithack.BlockHitHandler;
 import com.lishid.orebfuscator.hook.ProtocolLibHandler;
+import com.lishid.orebfuscator.hook.WorldGuardHandler;
 import com.lishid.orebfuscator.listeners.OrebfuscatorBlockListener;
 import com.lishid.orebfuscator.listeners.OrebfuscatorEntityListener;
 import com.lishid.orebfuscator.listeners.OrebfuscatorPlayerListener;
@@ -56,6 +58,8 @@ import com.lishid.orebfuscator.utils.MaterialHelper;
  */
 public class CraftOrebfuscator extends JavaPlugin implements Orebfuscator {
 
+	public static final String PREFIX = "§8[§aOFC§8] §8";
+
 	private final NmsHandler nmsHandler;
 	private final ObfuscatedDataCacheHandler obfuscatedDataCacheHandler;
 	private final ConfigHandler configHandler;
@@ -63,6 +67,7 @@ public class CraftOrebfuscator extends JavaPlugin implements Orebfuscator {
 	private final BlockHitHandler blockHitHandler;
 	private final ProximityHiderHandler proximityHiderHandler;
 	private final ProtocolLibHandler protocolLibHandler;
+	private final WorldGuardHandler worldGuardHandler;
 
 	private final Calculations calculations;
 	private final BlockUpdate blockUpdate;
@@ -83,6 +88,7 @@ public class CraftOrebfuscator extends JavaPlugin implements Orebfuscator {
 		this.blockHitHandler = new BlockHitHandler(this);
 		this.proximityHiderHandler = new ProximityHiderHandler(this);
 		this.protocolLibHandler = new ProtocolLibHandler(this);
+		this.worldGuardHandler = new WorldGuardHandler(this);
 	}
 
 	@Override
@@ -138,6 +144,10 @@ public class CraftOrebfuscator extends JavaPlugin implements Orebfuscator {
 
 	public IProtocolLibHandler getProtocolLibHandler() {
 		return this.protocolLibHandler;
+	}
+
+	public IWorldGuardHandler getWorldGuardHandler() {
+		return this.worldGuardHandler;
 	}
 
 	public ICalculations getCalculations() {

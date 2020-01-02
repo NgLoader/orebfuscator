@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.bukkit.Bukkit;
 
+import com.lishid.orebfuscator.CraftOrebfuscator;
 import com.lishid.orebfuscator.api.Handler;
 import com.lishid.orebfuscator.api.Orebfuscator;
 
@@ -32,55 +33,54 @@ public class CraftHandler implements Handler {
 	}
 
 	public void init() {
-		Bukkit.getConsoleSender().sendMessage("Initialize Handler §7\"§2" + this.getClass().getSimpleName() + "§7\"§8.");
+		Bukkit.getConsoleSender().sendMessage(CraftOrebfuscator.PREFIX + "Initialize Handler §7\"§2" + this.getClass().getSimpleName() + "§7\"§8.");
 		try {
 			this.onInit();
 		} catch(Exception e) {
 			e.printStackTrace();
-			Bukkit.getConsoleSender().sendMessage("§cError by initialize Handler §7\"§c" + this.getClass().getSimpleName() + "§7\"§8.");
+			Bukkit.getConsoleSender().sendMessage(CraftOrebfuscator.PREFIX + "§cError by initialize Handler §7\"§c" + this.getClass().getSimpleName() + "§7\"§8.");
 			return;
 		}
-		Bukkit.getConsoleSender().sendMessage("Initialized Handler §7\"§2" + this.getClass().getSimpleName() + "§7\"§8.");
+		Bukkit.getConsoleSender().sendMessage(CraftOrebfuscator.PREFIX + "Initialized Handler §7\"§2" + this.getClass().getSimpleName() + "§7\"§8.");
 	}
 
 	public void enable() {
-		if (!this.enableHandler()) {
+		if (!this.canEnable()) {
 			return;
 		}
 
-		Bukkit.getConsoleSender().sendMessage("Enable Handler §7\"§2" + this.getClass().getSimpleName() + "§7\"§8.");
+		Bukkit.getConsoleSender().sendMessage(CraftOrebfuscator.PREFIX + "Enable Handler §7\"§2" + this.getClass().getSimpleName() + "§7\"§8.");
 		try {
 			this.onEnable();
 			this.enabled = true;
 		} catch(Exception e) {
 			e.printStackTrace();
-			Bukkit.getConsoleSender().sendMessage("§cError by enable Handler §7\"§c" + this.getClass().getSimpleName() + "§7\"§8.");
+			Bukkit.getConsoleSender().sendMessage(CraftOrebfuscator.PREFIX + "§cError by enable Handler §7\"§c" + this.getClass().getSimpleName() + "§7\"§8.");
 			return;
 		}
-		Bukkit.getConsoleSender().sendMessage("Enabled Handler §7\"§2" + this.getClass().getSimpleName() + "§7\"§8.");
+		Bukkit.getConsoleSender().sendMessage(CraftOrebfuscator.PREFIX + "Enabled Handler §7\"§2" + this.getClass().getSimpleName() + "§7\"§8.");
 	}
 
 	public void disable() {
-		Bukkit.getConsoleSender().sendMessage("Disable Handler §7\"§2" + this.getClass().getSimpleName() + "§7\"§8.");
+		Bukkit.getConsoleSender().sendMessage(CraftOrebfuscator.PREFIX + "Disable Handler §7\"§2" + this.getClass().getSimpleName() + "§7\"§8.");
 		try {
 			this.enabled = false;
 			this.onDisable();
 		} catch(Exception e) {
 			e.printStackTrace();
-			Bukkit.getConsoleSender().sendMessage("§cError by disable Handler §7\"§c" + this.getClass().getSimpleName() + "§7\"§8.");
+			Bukkit.getConsoleSender().sendMessage(CraftOrebfuscator.PREFIX + "§cError by disable Handler §7\"§c" + this.getClass().getSimpleName() + "§7\"§8.");
 			return;
 		}
-		Bukkit.getConsoleSender().sendMessage("Disabled Handler §7\"§2" + this.getClass().getSimpleName() + "§7\"§8.");
+		Bukkit.getConsoleSender().sendMessage(CraftOrebfuscator.PREFIX + "Disabled Handler §7\"§2" + this.getClass().getSimpleName() + "§7\"§8.");
 	}
 
 	public void reload() {
-		if (this.enableHandler()) {
+		if (this.canEnable()) {
 			if (this.enabled) {
 				this.disable();
-				this.enable();
-			} else {
-				this.enable();
 			}
+
+			this.enable();
 		} else if (this.enabled) {
 			this.disable();
 		}
