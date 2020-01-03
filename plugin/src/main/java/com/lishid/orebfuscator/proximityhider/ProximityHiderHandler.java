@@ -23,7 +23,7 @@ import com.lishid.orebfuscator.api.nms.INmsManager;
 import com.lishid.orebfuscator.api.types.BlockCoord;
 import com.lishid.orebfuscator.handler.CraftHandler;
 
-public class ProximityHiderHandler extends CraftHandler implements IProximityHiderHandler {
+public class ProximityHiderHandler extends CraftHandler implements IProximityHiderHandler, Runnable {
 
 	private final Map<Player, ProximityHiderPlayer> proximityHiderTracker = new HashMap<Player, ProximityHiderPlayer>();
 	private final Map<Player, Location> playersToCheck = new HashMap<Player, Location>();
@@ -56,7 +56,7 @@ public class ProximityHiderHandler extends CraftHandler implements IProximityHid
 		this.running.compareAndSet(this.running.get(), true);
 
 		if (this.thread == null || this.thread.isInterrupted() || !this.thread.isAlive()) {
-			this.thread = new Thread(new ProximityHiderRunner());
+			this.thread = new Thread(this);
 			this.thread.setName("Orebfuscator ProximityHider Thread");
 			this.thread.setPriority(Thread.MIN_PRIORITY);
 			this.thread.setDaemon(true);
@@ -70,7 +70,7 @@ public class ProximityHiderHandler extends CraftHandler implements IProximityHid
 
 		if (this.thread != null && !this.thread.isInterrupted()) {
 			try {
-				this.thread.interrupt();
+				this.running.compareAndSet(this.running.get(), false);
 			} catch(Exception e) {
 				OFCLogger.log(e);
 			}
@@ -80,8 +80,146 @@ public class ProximityHiderHandler extends CraftHandler implements IProximityHid
 	}
 
 	@Override
-	public boolean enableHandler() {
+	public boolean canEnable() {
 		return this.config.isProximityHiderEnabled();
+	}
+
+	@Override
+	public void run() {
+		while (this.running.get()) {
+			try {
+				// Wait until necessary
+				long timeWait = lastExecute + config.getProximityHiderRate() - System.currentTimeMillis();
+				lastExecute = System.currentTimeMillis();
+				if (timeWait > 0) {
+					Thread.sleep(timeWait);
+				}
+
+				HashMap<Player, Location> checkPlayers = new HashMap<Player, Location>();
+
+				synchronized (playersToCheck) {
+					checkPlayers.putAll(playersToCheck);
+					playersToCheck.clear();
+				}
+
+				for (Player player : checkPlayers.keySet()) {
+					if (player == null) {
+						continue;
+					}
+
+					synchronized (proximityHiderTracker) {
+						if (!proximityHiderTracker.containsKey(player)) {
+							continue;
+						}
+					}
+
+					Location oldLocation = checkPlayers.get(player);
+
+					if (oldLocation != null) {
+						Location curLocation = player.getLocation();
+
+						// Player didn't actually move
+						if (curLocation.getBlockX() == oldLocation.getBlockX()
+								&& curLocation.getBlockY() == oldLocation.getBlockY()
+								&& curLocation.getBlockZ() == oldLocation.getBlockZ()) {
+							continue;
+						}
+					}
+
+					ProximityHiderPlayer localPlayerInfo = proximityPlayers.get(player);
+
+					if (localPlayerInfo == null) {
+						proximityPlayers.put(player, localPlayerInfo = new ProximityHiderPlayer(player.getWorld()));
+					}
+
+					synchronized (proximityHiderTracker) {
+						ProximityHiderPlayer playerInfo = proximityHiderTracker.get(player);
+
+						if (playerInfo != null) {
+							if (!localPlayerInfo.getWorld().equals(playerInfo.getWorld())) {
+								localPlayerInfo.setWorld(playerInfo.getWorld());
+								localPlayerInfo.clearChunks();
+							}
+
+							localPlayerInfo.copyChunks(playerInfo);
+							playerInfo.clearChunks();
+						}
+					}
+
+					if (localPlayerInfo.getWorld() == null || player.getWorld() == null || !player.getWorld().equals(localPlayerInfo.getWorld())) {
+						localPlayerInfo.clearChunks();
+						continue;
+					}
+
+					IWorldConfig worldConfig = configManager.getWorld(player.getWorld());
+					IProximityHiderConfig proximityHider = worldConfig.getProximityHiderConfig();
+
+					int checkRadius = proximityHider.getDistance() >> 4;
+
+					if ((proximityHider.getDistance() & 0xf) != 0) {
+						checkRadius++;
+					}
+
+					int distanceSquared = proximityHider.getDistanceSquared();
+
+					ArrayList<BlockCoord> removedBlocks = new ArrayList<BlockCoord>();
+					Location playerLocation = player.getLocation();
+					// 4.3.1 -- GAZE CHECK
+					Location playerEyes = player.getEyeLocation();
+					// 4.3.1 -- GAZE CHECK END
+					int minChunkX = (playerLocation.getBlockX() >> 4) - checkRadius;
+					int maxChunkX = minChunkX + (checkRadius << 1);
+					int minChunkZ = (playerLocation.getBlockZ() >> 4) - checkRadius;
+					int maxChunkZ = minChunkZ + (checkRadius << 1);
+
+					for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
+						for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
+							ArrayList<BlockCoord> blocks = localPlayerInfo.getBlocks(chunkX, chunkZ);
+
+							if (blocks == null)
+								continue;
+
+							removedBlocks.clear();
+
+							for (BlockCoord block : blocks) {
+								if (block == null) {
+									removedBlocks.add(block);
+									continue;
+								}
+
+								Location blockLocation = new Location(localPlayerInfo.getWorld(), block.x, block.y,
+										block.z);
+
+								if (proximityHider.isObfuscateAboveY() || playerLocation.distanceSquared(blockLocation) < distanceSquared) {
+									// 4.3.1 -- GAZE CHECK
+									if (!proximityHider.isUseFastGazeCheck() || doFastCheck(blockLocation, playerEyes, localPlayerInfo.getWorld())) {
+										// 4.3.1 -- GAZE CHECK END
+										removedBlocks.add(block);
+
+										if (nmsManager.sendBlockChange(player, blockLocation)) {
+											Bukkit.getScheduler().runTask(plugin, new Runnable() {
+
+												public void run() {
+													nmsManager.updateBlockTileEntity(block, player);
+												}
+											});
+										}
+									}
+								}
+							}
+
+							if (blocks.size() == removedBlocks.size()) {
+								localPlayerInfo.removeChunk(chunkX, chunkZ);
+							} else {
+								blocks.removeAll(removedBlocks);
+							}
+						}
+					}
+				}
+			} catch (Exception e) {
+				OFCLogger.log(e);
+			}
+		}
 	}
 
 	public void restartThread() {
@@ -89,7 +227,7 @@ public class ProximityHiderHandler extends CraftHandler implements IProximityHid
 			if (this.thread.isInterrupted() || this.thread.isAlive()) {
 				this.running.compareAndSet(this.running.get(), false);
 
-				if (!this.running.get() && this.enableHandler()) {
+				if (!this.running.get() && this.canEnable()) {
 					this.onEnable();
 				}
 			}
@@ -250,149 +388,6 @@ public class ProximityHiderHandler extends CraftHandler implements IProximityHid
 
 		synchronized (this.playersToReload) {
 			this.playersToReload.addAll(players);
-		}
-	}
-
-	private class ProximityHiderRunner extends Thread implements Runnable {
-
-		@Override
-		public void run() {
-			while (!this.isInterrupted() && running.get()) {
-				try {
-					// Wait until necessary
-					long timeWait = lastExecute + config.getProximityHiderRate() - System.currentTimeMillis();
-					lastExecute = System.currentTimeMillis();
-					if (timeWait > 0) {
-						Thread.sleep(timeWait);
-					}
-
-					HashMap<Player, Location> checkPlayers = new HashMap<Player, Location>();
-
-					synchronized (playersToCheck) {
-						checkPlayers.putAll(playersToCheck);
-						playersToCheck.clear();
-					}
-
-					for (Player player : checkPlayers.keySet()) {
-						if (player == null) {
-							continue;
-						}
-
-						synchronized (proximityHiderTracker) {
-							if (!proximityHiderTracker.containsKey(player)) {
-								continue;
-							}
-						}
-
-						Location oldLocation = checkPlayers.get(player);
-
-						if (oldLocation != null) {
-							Location curLocation = player.getLocation();
-
-							// Player didn't actually move
-							if (curLocation.getBlockX() == oldLocation.getBlockX()
-									&& curLocation.getBlockY() == oldLocation.getBlockY()
-									&& curLocation.getBlockZ() == oldLocation.getBlockZ()) {
-								continue;
-							}
-						}
-
-						ProximityHiderPlayer localPlayerInfo = proximityPlayers.get(player);
-
-						if (localPlayerInfo == null) {
-							proximityPlayers.put(player, localPlayerInfo = new ProximityHiderPlayer(player.getWorld()));
-						}
-
-						synchronized (proximityHiderTracker) {
-							ProximityHiderPlayer playerInfo = proximityHiderTracker.get(player);
-
-							if (playerInfo != null) {
-								if (!localPlayerInfo.getWorld().equals(playerInfo.getWorld())) {
-									localPlayerInfo.setWorld(playerInfo.getWorld());
-									localPlayerInfo.clearChunks();
-								}
-
-								localPlayerInfo.copyChunks(playerInfo);
-								playerInfo.clearChunks();
-							}
-						}
-
-						if (localPlayerInfo.getWorld() == null || player.getWorld() == null
-								|| !player.getWorld().equals(localPlayerInfo.getWorld())) {
-							localPlayerInfo.clearChunks();
-							continue;
-						}
-
-						IWorldConfig worldConfig = configManager.getWorld(player.getWorld());
-						IProximityHiderConfig proximityHider = worldConfig.getProximityHiderConfig();
-
-						int checkRadius = proximityHider.getDistance() >> 4;
-
-						if ((proximityHider.getDistance() & 0xf) != 0) {
-							checkRadius++;
-						}
-
-						int distanceSquared = proximityHider.getDistanceSquared();
-
-						ArrayList<BlockCoord> removedBlocks = new ArrayList<BlockCoord>();
-						Location playerLocation = player.getLocation();
-						// 4.3.1 -- GAZE CHECK
-						Location playerEyes = player.getEyeLocation();
-						// 4.3.1 -- GAZE CHECK END
-						int minChunkX = (playerLocation.getBlockX() >> 4) - checkRadius;
-						int maxChunkX = minChunkX + (checkRadius << 1);
-						int minChunkZ = (playerLocation.getBlockZ() >> 4) - checkRadius;
-						int maxChunkZ = minChunkZ + (checkRadius << 1);
-
-						for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
-							for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
-								ArrayList<BlockCoord> blocks = localPlayerInfo.getBlocks(chunkX, chunkZ);
-
-								if (blocks == null)
-									continue;
-
-								removedBlocks.clear();
-
-								for (BlockCoord block : blocks) {
-									if (block == null) {
-										removedBlocks.add(block);
-										continue;
-									}
-
-									Location blockLocation = new Location(localPlayerInfo.getWorld(), block.x, block.y,
-											block.z);
-
-									if (proximityHider.isObfuscateAboveY()
-											|| playerLocation.distanceSquared(blockLocation) < distanceSquared) {
-										// 4.3.1 -- GAZE CHECK
-										if (!proximityHider.isUseFastGazeCheck() || doFastCheck(blockLocation, playerEyes, localPlayerInfo.getWorld())) {
-											// 4.3.1 -- GAZE CHECK END
-											removedBlocks.add(block);
-
-											if (nmsManager.sendBlockChange(player, blockLocation)) {
-												Bukkit.getScheduler().runTask(plugin, new Runnable() {
-
-													public void run() {
-														nmsManager.updateBlockTileEntity(block, player);
-													}
-												});
-											}
-										}
-									}
-								}
-
-								if (blocks.size() == removedBlocks.size()) {
-									localPlayerInfo.removeChunk(chunkX, chunkZ);
-								} else {
-									blocks.removeAll(removedBlocks);
-								}
-							}
-						}
-					}
-				} catch (Exception e) {
-					OFCLogger.log(e);
-				}
-			}
 		}
 	}
 }

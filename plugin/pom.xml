@@ -42,12 +42,30 @@
 			</exclusions>
 		</dependency>
 		<dependency>
+			<groupId>com.sk89q.worldguard</groupId>
+			<artifactId>worldguard-bukkit</artifactId>
+			<version>7.0.2-SNAPSHOT</version>
+			<type>jar</type>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.sk89q.worldedit</groupId>
+			<artifactId>worldedit-bukkit</artifactId>
+			<version>7.1.0-SNAPSHOT</version>
+			<type>jar</type>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>net.openhft</groupId>
+			<artifactId>zero-allocation-hashing</artifactId>
+			<version>0.10.1</version>
+		</dependency>
+		<dependency>
 			<groupId>com.lishid</groupId>
 			<artifactId>orebfuscator-api</artifactId>
-			<version>api</version>
+			<version>${orebfuscator-version}</version>
 			<type>jar</type>
 			<scope>compile</scope>
-			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>com.lishid</groupId>
@@ -55,7 +73,6 @@
 			<version>v1_15_R1</version>
 			<type>jar</type>
 			<scope>compile</scope>
-			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>com.lishid</groupId>
@@ -63,7 +80,6 @@
 			<version>v1_14_R1</version>
 			<type>jar</type>
 			<scope>compile</scope>
-			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>com.lishid</groupId>
@@ -71,7 +87,6 @@
 			<version>v1_13_R2</version>
 			<type>jar</type>
 			<scope>compile</scope>
-			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>com.lishid</groupId>
@@ -79,7 +94,6 @@
 			<version>v1_13_R1</version>
 			<type>jar</type>
 			<scope>compile</scope>
-			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>com.lishid</groupId>
@@ -87,7 +101,6 @@
 			<version>v1_12_R1</version>
 			<type>jar</type>
 			<scope>compile</scope>
-			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>com.lishid</groupId>
@@ -95,7 +108,6 @@
 			<version>v1_11_R1</version>
 			<type>jar</type>
 			<scope>compile</scope>
-			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>com.lishid</groupId>
@@ -103,7 +115,6 @@
 			<version>v1_10_R1</version>
 			<type>jar</type>
 			<scope>compile</scope>
-			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>com.lishid</groupId>
@@ -111,7 +122,6 @@
 			<version>v1_9_R2</version>
 			<type>jar</type>
 			<scope>compile</scope>
-			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>com.lishid</groupId>
@@ -119,7 +129,6 @@
 			<version>v1_9_R1</version>
 			<type>jar</type>
 			<scope>compile</scope>
-			<optional>true</optional>
 		</dependency>
 	</dependencies>
 
@@ -168,10 +177,4 @@
 			</plugin>
 		</plugins>
 	</build>
-
-	<scm>
-		<connection>scm:git:git://github.com/lishid/Orebfuscator.git</connection>
-		<developerConnection>scm:git:git@github.com:lishid/Orebfuscator.git</developerConnection>
-		<url>https://github.com/lishid/Orebfuscator</url>
-	</scm>
 </project>

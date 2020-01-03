@@ -22,17 +22,8 @@ import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.lishid.orebfuscator.api.Handler;
-import com.lishid.orebfuscator.api.IProximityHiderHandler;
 import com.lishid.orebfuscator.api.Orebfuscator;
-import com.lishid.orebfuscator.api.cache.IObfuscatedDataCacheHandler;
-import com.lishid.orebfuscator.api.chunk.IChunkMapHandler;
-import com.lishid.orebfuscator.api.config.IConfigHandler;
-import com.lishid.orebfuscator.api.hithack.IBlockHitHandler;
-import com.lishid.orebfuscator.api.hook.IProtocolLibHandler;
 import com.lishid.orebfuscator.api.nms.INmsManager;
-import com.lishid.orebfuscator.api.utils.IBlockUpdate;
-import com.lishid.orebfuscator.api.utils.ICalculations;
-import com.lishid.orebfuscator.api.utils.IMaterialHelper;
 import com.lishid.orebfuscator.cache.ObfuscatedDataCacheHandler;
 import com.lishid.orebfuscator.chunkmap.ChunkMapHandler;
 import com.lishid.orebfuscator.commands.OrebfuscatorCommandExecutor;
@@ -48,6 +39,7 @@ import com.lishid.orebfuscator.obfuscation.BlockUpdate;
 import com.lishid.orebfuscator.obfuscation.Calculations;
 import com.lishid.orebfuscator.proximityhider.ProximityHiderHandler;
 import com.lishid.orebfuscator.utils.MaterialHelper;
+import com.lishid.orebfuscator.worldguard.WorldGuardHandler;
 
 /**
  * Orebfuscator Anti X-RAY
@@ -56,6 +48,8 @@ import com.lishid.orebfuscator.utils.MaterialHelper;
  */
 public class CraftOrebfuscator extends JavaPlugin implements Orebfuscator {
 
+	public static final String PREFIX = "§8[§aOFC§8] §8";
+
 	private final NmsHandler nmsHandler;
 	private final ObfuscatedDataCacheHandler obfuscatedDataCacheHandler;
 	private final ConfigHandler configHandler;
@@ -63,6 +57,7 @@ public class CraftOrebfuscator extends JavaPlugin implements Orebfuscator {
 	private final BlockHitHandler blockHitHandler;
 	private final ProximityHiderHandler proximityHiderHandler;
 	private final ProtocolLibHandler protocolLibHandler;
+	private final WorldGuardHandler worldGuardHandler;
 
 	private final Calculations calculations;
 	private final BlockUpdate blockUpdate;
@@ -83,6 +78,7 @@ public class CraftOrebfuscator extends JavaPlugin implements Orebfuscator {
 		this.blockHitHandler = new BlockHitHandler(this);
 		this.proximityHiderHandler = new ProximityHiderHandler(this);
 		this.protocolLibHandler = new ProtocolLibHandler(this);
+		this.worldGuardHandler = new WorldGuardHandler(this);
 	}
 
 	@Override
@@ -112,7 +108,7 @@ public class CraftOrebfuscator extends JavaPlugin implements Orebfuscator {
 		getServer().getScheduler().cancelTasks(this);
 	}
 
-	public IConfigHandler getConfigHandler() {
+	public ConfigHandler getConfigHandler() {
 		return this.configHandler;
 	}
 
@@ -120,35 +116,39 @@ public class CraftOrebfuscator extends JavaPlugin implements Orebfuscator {
 		return this.nmsHandler;
 	}
 
-	public IChunkMapHandler getChunkMapHandler() {
+	public ChunkMapHandler getChunkMapHandler() {
 		return this.chunkMapHandler;
 	}
 
-	public IObfuscatedDataCacheHandler getObfuscatedDataCacheHandler() {
+	public ObfuscatedDataCacheHandler getObfuscatedDataCacheHandler() {
 		return this.obfuscatedDataCacheHandler;
 	}
 
-	public IBlockHitHandler getBlockHitHandler() {
+	public BlockHitHandler getBlockHitHandler() {
 		return this.blockHitHandler;
 	}
 
-	public IProximityHiderHandler getProximityHiderHandler() {
+	public ProximityHiderHandler getProximityHiderHandler() {
 		return this.proximityHiderHandler;
 	}
 
-	public IProtocolLibHandler getProtocolLibHandler() {
+	public ProtocolLibHandler getProtocolLibHandler() {
 		return this.protocolLibHandler;
 	}
 
-	public ICalculations getCalculations() {
+	public WorldGuardHandler getWorldGuardHandler() {
+		return this.worldGuardHandler;
+	}
+
+	public Calculations getCalculations() {
 		return this.calculations;
 	}
 
-	public IBlockUpdate getBlockUpdate() {
+	public BlockUpdate getBlockUpdate() {
 		return this.blockUpdate;
 	}
 
-	public IMaterialHelper getMaterialHelper() {
+	public MaterialHelper getMaterialHelper() {
 		return this.materialHelper;
 	}
 }

@@ -5,8 +5,6 @@
 
 package com.lishid.orebfuscator.config;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -16,6 +14,7 @@ import com.lishid.orebfuscator.api.config.IWorldConfig;
 import com.lishid.orebfuscator.api.nms.INmsManager;
 import com.lishid.orebfuscator.api.utils.Globals;
 import com.lishid.orebfuscator.api.utils.IMaterialHelper;
+import com.lishid.orebfuscator.utils.ArrayUtil;
 
 public class WorldConfig implements IWorldConfig {
 
@@ -248,9 +247,16 @@ public class WorldConfig implements IWorldConfig {
 	}
 
 	public void shuffleRandomBlocks() {
-		synchronized (this.randomBlocks) {
-			Collections.shuffle(Arrays.asList(this.randomBlocks));
-			Collections.shuffle(Arrays.asList(this.randomBlocks2));
+		if (this.randomBlocks.length != 0) {
+			synchronized (this.randomBlocks) {
+				ArrayUtil.shuffle(this.randomBlocks);
+			}
+		}
+
+		if (this.randomBlocks2.length != 0) {
+			synchronized (this.randomBlocks2) {
+				ArrayUtil.shuffle(this.randomBlocks2);
+			}
 		}
 	}
 

@@ -6,7 +6,6 @@
 
 package com.lishid.orebfuscator.nms.v1_13_R2;
 
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -35,10 +34,21 @@ import net.minecraft.server.v1_13_R2.IBlockData;
 import net.minecraft.server.v1_13_R2.IChatBaseComponent;
 import net.minecraft.server.v1_13_R2.Packet;
 import net.minecraft.server.v1_13_R2.TileEntity;
-import net.minecraft.server.v1_13_R2.WorldServer;
 
 public class NmsManager implements INmsManager {
-	private static final int BITS_PER_BLOCK = 14;
+
+	private static IBlockData getBlockData(World world, int x, int y, int z, boolean loadChunk) {
+		int chunkX = x >> 4;
+		int chunkZ = z >> 4;
+
+		ChunkProviderServer chunkProviderServer = ((CraftWorld) world).getHandle().getChunkProvider();
+
+		if (!loadChunk && !chunkProviderServer.isLoaded(chunkX, chunkZ))
+			return null;
+
+		Chunk chunk = chunkProviderServer.getChunkAt(chunkX, chunkZ, true, true);
+		return chunk != null ? chunk.getBlockData(x, y, z) : null;
+	}
 
 	private int BLOCK_ID_CAVE_AIR;
 	private Set<Integer> BLOCK_ID_AIRS;
@@ -198,27 +208,20 @@ public class NmsManager implements INmsManager {
 	}
 
 	public void updateBlockTileEntity(BlockCoord blockCoord, Player player) {
-		CraftWorld world = (CraftWorld)player.getWorld();
-		// 1.13.2 has made this quite a bit different in later builds.
-		TileEntity tileEntity = null;
 		try {
-			Method getTileEntityAt = world.getClass().getMethod("getTileEntityAt", int.class, int.class, int.class);
-			tileEntity = (TileEntity) getTileEntityAt.invoke(world, blockCoord.x, blockCoord.y, blockCoord.z);
-		} catch (NoSuchMethodException nsme) {
-			tileEntity = world.getHandle().getTileEntity(new BlockPosition(blockCoord.x, blockCoord.y, blockCoord.z));
+			CraftWorld world = (CraftWorld) player.getWorld();
+			TileEntity tileEntity = world.getHandle().getTileEntity(new BlockPosition(blockCoord.x, blockCoord.y, blockCoord.z));
+
+			if (tileEntity == null) {
+				return;
+			}
+
+			Packet<?> packet = tileEntity.getUpdatePacket();
+			if (packet != null) {
+				((CraftPlayer) player).getHandle().playerConnection.sendPacket(packet);
+			}
 		} catch (Exception e) {
-			return;
-		}
-
-		if (tileEntity == null) {
-			return;
-		}
-
-		Packet<?> packet = tileEntity.getUpdatePacket();
-
-		if (packet != null) {
-			CraftPlayer player2 = (CraftPlayer)player;
-			player2.getHandle().playerConnection.sendPacket(packet);
+			e.printStackTrace();
 		}
 	}
 
@@ -234,21 +237,18 @@ public class NmsManager implements INmsManager {
 	}
 
 	public IBlockInfo getBlockInfo(World world, int x, int y, int z) {
-		IBlockData blockData = getBlockData(world, x, y, z, false);
+		IBlockData blockData = NmsManager.getBlockData(world, x, y, z, false);
 
-		return blockData != null
-				? new BlockInfo(x, y, z, blockData)
-				: null;
+		return blockData != null ? new BlockInfo(x, y, z, blockData) : null;
 	}
 
 	public int loadChunkAndGetBlockId(World world, int x, int y, int z) {
-		IBlockData blockData = getBlockData(world, x, y, z, true);
+		IBlockData blockData = NmsManager.getBlockData(world, x, y, z, true);
 		return blockData != null ? Block.getCombinedId(blockData): -1;
 	}
 
 	public String getTextFromChatComponent(String json) {
-		IChatBaseComponent component = IChatBaseComponent.ChatSerializer.a(json);
-		return CraftChatMessage.fromComponent(component);
+		return CraftChatMessage.fromComponent(IChatBaseComponent.ChatSerializer.a(json));
 	}
 
 	public boolean isHoe(Material item) {
@@ -275,7 +275,7 @@ public class NmsManager implements INmsManager {
 	}
 
 	public int getBitsPerBlock() {
-		return BITS_PER_BLOCK;
+		return 14;
 	}
 
 	public boolean canApplyPhysics(Material blockMaterial) {
@@ -292,44 +292,14 @@ public class NmsManager implements INmsManager {
 	}
 
 	public boolean sendBlockChange(Player player, Location blockLocation) {
-		IBlockData blockData = getBlockData(blockLocation.getWorld(), blockLocation.getBlockX(), blockLocation.getBlockY(), blockLocation.getBlockZ(), false);
+		IBlockData blockData = NmsManager.getBlockData(blockLocation.getWorld(), blockLocation.getBlockX(), blockLocation.getBlockY(), blockLocation.getBlockZ(), false);
 
-		if(blockData == null) return false;
-
-		CraftBlockData craftBlockData = CraftBlockData.fromData(blockData);
-
-		player.sendBlockChange(blockLocation, craftBlockData);
-
-		return true;
-	}
-
-	private static IBlockData getBlockData(World world, int x, int y, int z, boolean loadChunk) {
-		int chunkX = x >> 4;
-		int chunkZ = z >> 4;
-
-		WorldServer worldServer = ((CraftWorld)world).getHandle();
-		// like in ChunkCache, NMS change without R increment.
-		ChunkProviderServer chunkProviderServer = null;
-		try {
-			Method getChunkProviderServer = worldServer.getClass().getDeclaredMethod("getChunkProviderServer");
-			chunkProviderServer = (ChunkProviderServer) getChunkProviderServer.invoke(worldServer);
-		} catch (NoSuchMethodException nmfe) {
-			try {
-				Method getChunkProvider = worldServer.getClass().getDeclaredMethod("getChunkProvider");
-				chunkProviderServer = (ChunkProviderServer) getChunkProvider.invoke(worldServer);
-			} catch (NoSuchMethodException nsme) {
-				return null; // oops
-			} catch (Exception e) {
-				return null;
-			}
-		} catch (Exception e) {
-			return null;
+		if(blockData == null) {
+			return false;
 		}
-		if(!loadChunk && !chunkProviderServer.isLoaded(chunkX, chunkZ)) return null;
 
-		Chunk chunk = chunkProviderServer.getChunkAt(chunkX, chunkZ, true, true);
-
-		return chunk != null ? chunk.getBlockData(x, y, z) : null;
+		player.sendBlockChange(blockLocation, CraftBlockData.fromData(blockData));
+		return true;
 	}
 
 	private Set<Integer> convertMaterialsToSet(Material[] materials) {
@@ -343,7 +313,7 @@ public class NmsManager implements INmsManager {
 	}
 
 	private int[] convertMaterialsToIds(Material[] materials) {
-		Set<Integer> ids = convertMaterialsToSet(materials);
+		Set<Integer> ids = this.convertMaterialsToSet(materials);
 
 		int[] result = new int[ids.size()];
 		int index = 0;
@@ -363,15 +333,5 @@ public class NmsManager implements INmsManager {
 	@Override
 	public boolean hasBlockCount() {
 		return false;
-	}
-
-	@Override
-	public boolean wasNmsFound() {
-		return false;
-	}
-
-	@Override
-	public String getServerVersion() {
-		return null;
 	}
 }

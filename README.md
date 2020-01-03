@@ -81,12 +81,17 @@ Orebfuscator.getProvider();
 
 ## License:
 
+Significantly reworked by NgLoader to support v1.15 Minecraft; these portions as permissible:
+Copyright (C) 2019 by NgLoader. All rights reserved.
+
+Released under the same license as original.
+
 Significantly reworked by Aleksey_Terzi to support v1.9 Minecraft; these portions as permissible:
 Copyright (C) 2016 by Aleksey_Terzi. All rights reserved.
 
 Released under the same license as original.
 
-#### Original Copyright and  License:
+#### Original Copyright and License:
 
 Copyright (C) 2011-2015 lishid.  All rights reserved.
 

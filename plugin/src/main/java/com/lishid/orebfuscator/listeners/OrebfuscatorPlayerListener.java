@@ -16,6 +16,7 @@
 
 package com.lishid.orebfuscator.listeners;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event.Result;
@@ -81,6 +82,14 @@ public class OrebfuscatorPlayerListener implements Listener {
 		if (this.config.isProximityHiderEnabled()) {
 			this.proximityHiderHandler.clearPlayer(event.getPlayer());
 		}
+
+		Bukkit.getScheduler().runTask(this.plugin, new Runnable() {
+			
+			@Override
+			public void run() {
+				plugin.getCalculations().playerDisconnected(event.getPlayer());
+			}
+		});
 	}
 
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

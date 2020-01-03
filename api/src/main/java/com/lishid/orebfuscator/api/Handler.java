@@ -6,7 +6,7 @@ public interface Handler {
 	default void onEnable() { }
 	default void onDisable() { }
 
-	default boolean enableHandler() {
+	default boolean canEnable() {
 		return true;
 	}
 

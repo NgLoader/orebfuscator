@@ -27,7 +27,7 @@ import org.bukkit.entity.Player;
 import com.comphenix.protocol.wrappers.nbt.NbtBase;
 import com.comphenix.protocol.wrappers.nbt.NbtCompound;
 import com.comphenix.protocol.wrappers.nbt.NbtType;
-import com.lishid.orebfuscator.api.Orebfuscator;
+import com.lishid.orebfuscator.CraftOrebfuscator;
 import com.lishid.orebfuscator.api.chunk.ChunkData;
 import com.lishid.orebfuscator.api.chunk.IChunkMap;
 import com.lishid.orebfuscator.api.config.IOrebfuscatorConfig;
@@ -47,7 +47,7 @@ public class Calculations extends CraftHandler implements ICalculations {
 	private IOrebfuscatorConfig config;
 	private INmsManager nmsManager;
 
-	public Calculations(Orebfuscator plugin) {
+	public Calculations(CraftOrebfuscator plugin) {
 		super(plugin);
 	}
 
@@ -63,11 +63,11 @@ public class Calculations extends CraftHandler implements ICalculations {
 
 		byte[] output;
 		ArrayList<BlockCoord> removedEntities;
+
 		ObfuscatedCachedChunk cache = this.tryUseCache(chunkData, player);
 
 		if (cache != null && cache.data != null) {
-			output = cache.data;
-			removedEntities = this.getCoordFromArray(cache.removedEntityList);
+			return new Result(cache.data, this.getCoordFromArray(cache.removedEntityList));
 		} else {
 			// Blocks kept track for ProximityHider
 			ArrayList<BlockCoord> proximityBlocks = new ArrayList<>();
@@ -88,11 +88,7 @@ public class Calculations extends CraftHandler implements ICalculations {
 			}
 		}
 
-		Result result = new Result();
-		result.output = output;
-		result.removedEntities = removedEntities;
-
-		return result;
+		return new Result(output, removedEntities);
 	}
 
 	private int[] getArrayFromCoord(ArrayList<BlockCoord> coords) {
@@ -119,29 +115,23 @@ public class Calculations extends CraftHandler implements ICalculations {
 			int index = 0;
 
 			while (index < array.length) {
-				int x = array[index++];
-				int y = array[index++];
-				int z = array[index++];
-				BlockCoord b = new BlockCoord(x, y, z);
-
-				if (b != null) {
-					list.add(b);
-				}
+				list.add(new BlockCoord(array[index++], array[index++], array[index++]));
 			}
 		}
 		return list;
 	}
 
-	private byte[] obfuscate(IWorldConfig worldConfig, ChunkData chunkData, Player player, ArrayList<BlockCoord> proximityBlocks, ArrayList<BlockCoord> removedEntities) throws Exception {
+	public byte[] obfuscate(IWorldConfig worldConfig, ChunkData chunkData, Player player, ArrayList<BlockCoord> proximityBlocks, ArrayList<BlockCoord> removedEntities) throws Exception {
 		IProximityHiderConfig proximityHider = worldConfig.getProximityHiderConfig();
-		int initialRadius = this.config.getInitialRadius();
+		World world = player.getWorld();
+		int initialRadius = config.getInitialRadius();
 
 		// Track of pseudo-randomly assigned randomBlock
 		int randomIncrement = 0;
 		int randomIncrement2 = 0;
 		int randomCave = 0;
 
-		int engineMode = this.config.getEngineMode();
+		int engineMode = config.getEngineMode();
 		int maxChance = worldConfig.getAirGeneratorMaxChance();
 
 		int randomBlocksLength = worldConfig.getRandomBlocks().length;
@@ -150,9 +140,9 @@ public class Calculations extends CraftHandler implements ICalculations {
 		int startX = chunkData.chunkX << 4;
 		int startZ = chunkData.chunkZ << 4;
 
-		byte[] output;
+		byte[] output = null;
 
-		try (IChunkMap manager = this.plugin.getChunkMapHandler().create(chunkData)) {
+		try (IChunkMap manager = plugin.getChunkMapHandler().create(chunkData)) {
 			for (int i = 0; i < manager.getSectionCount(); i++) {
 				worldConfig.shuffleRandomBlocks();
 
@@ -166,6 +156,7 @@ public class Calculations extends CraftHandler implements ICalculations {
 							int y = manager.getY();
 							int z = startZ | offsetZ;
 
+							// TODO move to sub procedure
 							// Initialize data
 							int obfuscateBits = worldConfig.getObfuscatedBits(blockData);
 							boolean obfuscateFlag = (obfuscateBits & Globals.MASK_OBFUSCATE) != 0;
@@ -175,14 +166,14 @@ public class Calculations extends CraftHandler implements ICalculations {
 
 							boolean obfuscate = false;
 							boolean specialObfuscate = false;
-
 							// Check if the block should be obfuscated for the default engine modes
 							if (obfuscateFlag) {
 								if (initialRadius == 0) {
 									// Do not interfere with PH
 									if (proximityHiderFlag && proximityHider.isEnabled()
 											&& proximityHider.isProximityObfuscated(y, blockData)) {
-										if (!this.areAjacentBlocksTransparent(manager, player.getWorld(), false, x, y, z, 1)) {
+										if (!areAjacentBlocksTransparent(manager, player.getWorld(), false, x, y, z,
+												1)) {
 											obfuscate = true;
 										}
 									} else {
@@ -191,14 +182,16 @@ public class Calculations extends CraftHandler implements ICalculations {
 									}
 								} else {
 									// Check if any nearby blocks are transparent
-									if (!this.areAjacentBlocksTransparent(manager, player.getWorld(), false, x, y, z, initialRadius)) {
+									if (!areAjacentBlocksTransparent(manager, player.getWorld(), false, x, y, z,
+											initialRadius)) {
 										obfuscate = true;
 									}
 								}
 							}
 
 							// Check if the block should be obfuscated because of proximity check
-							if (!obfuscate && proximityHiderFlag && proximityHider.isEnabled() && proximityHider.isProximityObfuscated(y, blockData)) {
+							if (!obfuscate && proximityHiderFlag && proximityHider.isEnabled()
+									&& proximityHider.isProximityObfuscated(y, blockData)) {
 								BlockCoord block = new BlockCoord(x, y, z);
 								if (block != null) {
 									proximityBlocks.add(block);
@@ -211,7 +204,8 @@ public class Calculations extends CraftHandler implements ICalculations {
 							}
 
 							// Check if the block is obfuscated
-							if (obfuscate && (!worldConfig.isBypassObfuscationForSignsWithText() || this.canObfuscate(chunkData, x, y, z, blockData))) {
+							if (obfuscate && (!worldConfig.isBypassObfuscationForSignsWithText()
+									|| this.canObfuscate(player, world, chunkData, x, y, z, blockData))) {
 								if (specialObfuscate) {
 									// Proximity hider
 									blockData = proximityHider.getSpecialBlockID();
@@ -222,7 +216,8 @@ public class Calculations extends CraftHandler implements ICalculations {
 									} else if (engineMode == 2) {
 										// Ending mode 2, replace with random block
 										if (randomBlocksLength > 1) {
-											randomIncrement = CalculationsUtil.increment(randomIncrement, randomBlocksLength);
+											randomIncrement = CalculationsUtil.increment(randomIncrement,
+													randomBlocksLength);
 										}
 
 										blockData = worldConfig.getRandomBlock(randomIncrement, randomAlternate);
@@ -231,14 +226,14 @@ public class Calculations extends CraftHandler implements ICalculations {
 									// Anti texturepack and freecam
 									if (worldConfig.isAntiTexturePackAndFreecam()) {
 										// Add random air blocks
-										randomIncrement2 = this.random(incrementMax);
+										randomIncrement2 = random(incrementMax);
 
 										if (randomIncrement2 == 0) {
-											randomCave = 1 + this.random(3);
+											randomCave = 1 + random(3);
 										}
 
 										if (randomCave > 0) {
-											blockData = this.nmsManager.getCaveAirBlockId();
+											blockData = nmsManager.getCaveAirBlockId();
 											randomCave--;
 										}
 									}
@@ -247,9 +242,9 @@ public class Calculations extends CraftHandler implements ICalculations {
 
 							// Check if the block should be obfuscated because of the darkness
 							if (!obfuscate && darknessBlockFlag && worldConfig.isDarknessHideBlocks()) {
-								if (!this.areAjacentBlocksBright(player.getWorld(), x, y, z, 1)) {
+								if (!areAjacentBlocksBright(player.getWorld(), x, y, z, 1)) {
 									// Hide block, setting it to air
-									blockData = this.nmsManager.getCaveAirBlockId();
+									blockData = nmsManager.getCaveAirBlockId();
 									obfuscate = true;
 								}
 							}
@@ -275,11 +270,11 @@ public class Calculations extends CraftHandler implements ICalculations {
 			output = manager.createOutput();
 		}
 
-		this.plugin.getProximityHiderHandler().addProximityBlocks(player, chunkData.chunkX, chunkData.chunkZ, proximityBlocks);
+		plugin.getProximityHiderHandler().addProximityBlocks(player, chunkData.chunkX, chunkData.chunkZ, proximityBlocks);
 		return output;
 	}
 
-	private boolean canObfuscate(ChunkData chunkData, int x, int y, int z, int blockData) {
+	private boolean canObfuscate(Player player, World world, ChunkData chunkData, int x, int y, int z, int blockData) {
 		if (!this.nmsManager.isSign(blockData)) {
 			return true;
 		}
@@ -335,11 +330,13 @@ public class Calculations extends CraftHandler implements ICalculations {
 		chunkData.useCache = true;
 
 		// Hash the chunk
-		long hash = CalculationsUtil.Hash(chunkData.data, chunkData.data.length);
+		long hash = CalculationsUtil.Hash(chunkData.data);
 		// Get cache folder
-		File cacheFolder = new File(this.plugin.getObfuscatedDataCacheHandler().getCacheFolder(), player.getWorld().getName());
+		File cacheFolder = new File(this.plugin.getObfuscatedDataCacheHandler().getCacheFolder(),
+				player.getWorld().getName());
 		// Create cache objects
-		ObfuscatedCachedChunk cache = new ObfuscatedCachedChunk(this.plugin, cacheFolder, chunkData.chunkX, chunkData.chunkZ);
+		ObfuscatedCachedChunk cache = new ObfuscatedCachedChunk(this.plugin, cacheFolder, chunkData.chunkX,
+				chunkData.chunkZ);
 
 		// Check if hash is consistent
 		cache.read();
@@ -351,7 +348,8 @@ public class Calculations extends CraftHandler implements ICalculations {
 			ArrayList<BlockCoord> proximityBlocks = this.getCoordFromArray(proximityList);
 
 			// ProximityHider add blocks
-			this.plugin.getProximityHiderHandler().addProximityBlocks(player, chunkData.chunkX, chunkData.chunkZ, proximityBlocks);
+			this.plugin.getProximityHiderHandler().addProximityBlocks(player, chunkData.chunkX, chunkData.chunkZ,
+					proximityBlocks);
 
 			// Hash match, use the cached data instead and skip calculations
 			return cache;
@@ -363,7 +361,8 @@ public class Calculations extends CraftHandler implements ICalculations {
 		return cache;
 	}
 
-	public boolean areAjacentBlocksTransparent(IChunkMap manager, World world, boolean checkCurrentBlock, int x, int y, int z, int countdown) throws IOException {
+	public boolean areAjacentBlocksTransparent(IChunkMap manager, World world, boolean checkCurrentBlock, int x, int y,
+			int z, int countdown) throws IOException {
 		if (y >= world.getMaxHeight() || y < 0) {
 			return true;
 		}
