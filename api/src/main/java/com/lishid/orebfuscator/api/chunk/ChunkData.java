@@ -2,6 +2,8 @@ package com.lishid.orebfuscator.api.chunk;
 
 import java.util.List;
 
+import org.bukkit.World;
+
 import com.comphenix.protocol.wrappers.nbt.NbtCompound;
 
 public class ChunkData {
@@ -14,6 +16,5 @@ public class ChunkData {
 	public boolean isOverworld;
 	public boolean useCache;
 	public List<NbtCompound> blockEntities;
-
-	public boolean worldGuardRegion = false;
+	public World world;
 }

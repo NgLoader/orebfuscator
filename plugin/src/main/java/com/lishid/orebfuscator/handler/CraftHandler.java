@@ -8,7 +8,6 @@ import org.bukkit.Bukkit;
 
 import com.lishid.orebfuscator.CraftOrebfuscator;
 import com.lishid.orebfuscator.api.Handler;
-import com.lishid.orebfuscator.api.Orebfuscator;
 
 public class CraftHandler implements Handler {
 
@@ -23,10 +22,10 @@ public class CraftHandler implements Handler {
 		CraftHandler.CraftHandlers.clear();
 	}
 
-	protected final Orebfuscator plugin;
+	protected final CraftOrebfuscator plugin;
 	private boolean enabled = false;
 
-	public CraftHandler(Orebfuscator plugin) {
+	public CraftHandler(CraftOrebfuscator plugin) {
 		this.plugin = plugin;
 
 		CraftHandler.CraftHandlers.add(this);
@@ -90,7 +89,7 @@ public class CraftHandler implements Handler {
 		return this.enabled;
 	}
 
-	public Orebfuscator getPlugin() {
+	public CraftOrebfuscator getPlugin() {
 		return this.plugin;
 	}
 }

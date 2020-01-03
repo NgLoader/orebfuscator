@@ -1,4 +1,4 @@
-package com.lishid.orebfuscator.hook;
+package com.lishid.orebfuscator.worldguard;
 
 import java.util.HashMap;
 import java.util.List;

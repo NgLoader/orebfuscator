@@ -22,5 +22,10 @@ public interface ICalculations {
 	public class Result {
 		public byte[] output;
 		public ArrayList<BlockCoord> removedEntities;
+
+		public Result(byte[] output, ArrayList<BlockCoord> removedEntities) {
+			this.output = output;
+			this.removedEntities = removedEntities;
+		}
 	}
 }

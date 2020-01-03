@@ -34,7 +34,7 @@ import com.comphenix.protocol.reflect.StructureModifier;
 import com.comphenix.protocol.wrappers.EnumWrappers;
 import com.comphenix.protocol.wrappers.nbt.NbtCompound;
 import com.comphenix.protocol.wrappers.nbt.NbtFactory;
-import com.lishid.orebfuscator.api.Orebfuscator;
+import com.lishid.orebfuscator.CraftOrebfuscator;
 import com.lishid.orebfuscator.api.chunk.ChunkData;
 import com.lishid.orebfuscator.api.config.IConfigManager;
 import com.lishid.orebfuscator.api.config.IOrebfuscatorConfig;
@@ -58,7 +58,7 @@ public class ProtocolLibHandler extends CraftHandler implements IProtocolLibHand
 
 	private ProtocolManager manager;
 
-	public ProtocolLibHandler(Orebfuscator plugin) {
+	public ProtocolLibHandler(CraftOrebfuscator plugin) {
 		super(plugin);
 	}
 
@@ -128,7 +128,8 @@ public class ProtocolLibHandler extends CraftHandler implements IProtocolLibHand
 					chunkData.groundUpContinuous = bools.read(0);
 					chunkData.primaryBitMask = ints.read(2);
 					chunkData.data = byteArray.read(0);
-					chunkData.isOverworld = event.getPlayer().getWorld().getEnvironment() == World.Environment.NORMAL;
+					chunkData.world = event.getPlayer().getWorld();
+					chunkData.isOverworld = chunkData.world.getEnvironment() == World.Environment.NORMAL;
 					chunkData.blockEntities = getBlockEntities(nmsTags);
 
 					Calculations.Result result = calculations.obfuscateOrUseCache(chunkData, player, worldConfig);

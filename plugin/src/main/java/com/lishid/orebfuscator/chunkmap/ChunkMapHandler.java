@@ -3,7 +3,7 @@ package com.lishid.orebfuscator.chunkmap;
 import java.io.IOException;
 import java.util.Stack;
 
-import com.lishid.orebfuscator.api.Orebfuscator;
+import com.lishid.orebfuscator.CraftOrebfuscator;
 import com.lishid.orebfuscator.api.chunk.ChunkData;
 import com.lishid.orebfuscator.api.chunk.IChunkMapBuffer;
 import com.lishid.orebfuscator.api.chunk.IChunkMapHandler;
@@ -28,7 +28,7 @@ public class ChunkMapHandler extends CraftHandler implements IChunkMapHandler {
 	private int bitsPerBlock;
 	private int maxBytesPerChunk;
 
-	public ChunkMapHandler(Orebfuscator core) {
+	public ChunkMapHandler(CraftOrebfuscator core) {
 		super(core);
 	}
 

@@ -19,7 +19,6 @@ package com.lishid.orebfuscator.obfuscation;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Map;
 import java.util.Random;
 
 import org.bukkit.World;
@@ -28,20 +27,18 @@ import org.bukkit.entity.Player;
 import com.comphenix.protocol.wrappers.nbt.NbtBase;
 import com.comphenix.protocol.wrappers.nbt.NbtCompound;
 import com.comphenix.protocol.wrappers.nbt.NbtType;
-import com.lishid.orebfuscator.api.Orebfuscator;
+import com.lishid.orebfuscator.CraftOrebfuscator;
 import com.lishid.orebfuscator.api.chunk.ChunkData;
 import com.lishid.orebfuscator.api.chunk.IChunkMap;
 import com.lishid.orebfuscator.api.config.IOrebfuscatorConfig;
 import com.lishid.orebfuscator.api.config.IProximityHiderConfig;
 import com.lishid.orebfuscator.api.config.IWorldConfig;
-import com.lishid.orebfuscator.api.hook.IWorldGuardHandler;
 import com.lishid.orebfuscator.api.nms.INmsManager;
 import com.lishid.orebfuscator.api.types.BlockCoord;
 import com.lishid.orebfuscator.api.utils.Globals;
 import com.lishid.orebfuscator.api.utils.ICalculations;
 import com.lishid.orebfuscator.cache.ObfuscatedCachedChunk;
 import com.lishid.orebfuscator.handler.CraftHandler;
-import com.lishid.orebfuscator.utils.Pair;
 
 public class Calculations extends CraftHandler implements ICalculations {
 
@@ -49,11 +46,8 @@ public class Calculations extends CraftHandler implements ICalculations {
 
 	private IOrebfuscatorConfig config;
 	private INmsManager nmsManager;
-	private IWorldGuardHandler worldGuard;
 
-	private WorldGuardCheck worldGuardCheck;
-
-	public Calculations(Orebfuscator plugin) {
+	public Calculations(CraftOrebfuscator plugin) {
 		super(plugin);
 	}
 
@@ -61,30 +55,6 @@ public class Calculations extends CraftHandler implements ICalculations {
 	public void onInit() {
 		this.config = this.plugin.getConfigHandler().getConfig();
 		this.nmsManager = this.plugin.getNmsManager();
-		this.worldGuard = this.plugin.getWorldGuardHandler();
-	}
-
-	@Override
-	public void onEnable() {
-		if(this.worldGuard.isSupported()) {
-			this.worldGuardCheck = new WorldGuardCheck() {
-
-				@Override
-				public Map.Entry<Boolean, Boolean> isInRegionAndHasPermission(Player player, World world, int x, int y, int z) {
-					return worldGuard.isInRegionAndHasPermission(player, world, x, y, z);
-				}
-			};
-		} else {
-			this.worldGuardCheck = new WorldGuardCheck() {
-
-				private final Pair<Boolean, Boolean> pairFalseFalse = new Pair<>(false, false);
-
-				@Override
-				public Map.Entry<Boolean, Boolean> isInRegionAndHasPermission(Player player, World world, int x, int y, int z) {
-					return this.pairFalseFalse;
-				}
-			};
-		}
 	}
 
 	public Result obfuscateOrUseCache(ChunkData chunkData, Player player, IWorldConfig worldConfig) throws Exception {
@@ -94,11 +64,10 @@ public class Calculations extends CraftHandler implements ICalculations {
 		byte[] output;
 		ArrayList<BlockCoord> removedEntities;
 
-		ObfuscatedCachedChunk cache = chunkData.worldGuardRegion ? null : this.tryUseCache(chunkData, player);
+		ObfuscatedCachedChunk cache = this.tryUseCache(chunkData, player);
 
 		if (cache != null && cache.data != null) {
-			output = cache.data;
-			removedEntities = this.getCoordFromArray(cache.removedEntityList);
+			return new Result(cache.data, this.getCoordFromArray(cache.removedEntityList));
 		} else {
 			// Blocks kept track for ProximityHider
 			ArrayList<BlockCoord> proximityBlocks = new ArrayList<>();
@@ -119,11 +88,7 @@ public class Calculations extends CraftHandler implements ICalculations {
 			}
 		}
 
-		Result result = new Result();
-		result.output = output;
-		result.removedEntities = removedEntities;
-
-		return result;
+		return new Result(output, removedEntities);
 	}
 
 	private int[] getArrayFromCoord(ArrayList<BlockCoord> coords) {
@@ -150,22 +115,13 @@ public class Calculations extends CraftHandler implements ICalculations {
 			int index = 0;
 
 			while (index < array.length) {
-				int x = array[index++];
-				int y = array[index++];
-				int z = array[index++];
-				BlockCoord b = new BlockCoord(x, y, z);
-
-				if (b != null) {
-					list.add(b);
-				}
+				list.add(new BlockCoord(array[index++], array[index++], array[index++]));
 			}
 		}
 		return list;
 	}
 
-	
 	public byte[] obfuscate(IWorldConfig worldConfig, ChunkData chunkData, Player player, ArrayList<BlockCoord> proximityBlocks, ArrayList<BlockCoord> removedEntities) throws Exception {
-		long startTime = System.currentTimeMillis();
 		IProximityHiderConfig proximityHider = worldConfig.getProximityHiderConfig();
 		World world = player.getWorld();
 		int initialRadius = config.getInitialRadius();
@@ -184,8 +140,7 @@ public class Calculations extends CraftHandler implements ICalculations {
 		int startX = chunkData.chunkX << 4;
 		int startZ = chunkData.chunkZ << 4;
 
-		byte[] output;
-		boolean worldGuard = false;
+		byte[] output = null;
 
 		try (IChunkMap manager = plugin.getChunkMapHandler().create(chunkData)) {
 			for (int i = 0; i < manager.getSectionCount(); i++) {
@@ -201,6 +156,7 @@ public class Calculations extends CraftHandler implements ICalculations {
 							int y = manager.getY();
 							int z = startZ | offsetZ;
 
+							// TODO move to sub procedure
 							// Initialize data
 							int obfuscateBits = worldConfig.getObfuscatedBits(blockData);
 							boolean obfuscateFlag = (obfuscateBits & Globals.MASK_OBFUSCATE) != 0;
@@ -210,96 +166,91 @@ public class Calculations extends CraftHandler implements ICalculations {
 
 							boolean obfuscate = false;
 							boolean specialObfuscate = false;
-
-							Map.Entry<Boolean, Boolean> entry = this.worldGuardCheck.isInRegionAndHasPermission(player, world, x, y, z);
-
-							if (!entry.getKey() || !entry.getValue()) {
-								// Check if the block should be obfuscated for the default engine modes
-								if (obfuscateFlag) {
-									if (initialRadius == 0) {
-										// Do not interfere with PH
-										if (proximityHiderFlag && proximityHider.isEnabled() && proximityHider.isProximityObfuscated(y, blockData)) {
-											if (!areAjacentBlocksTransparent(manager, player.getWorld(), false, x, y, z, 1)) {
-												obfuscate = true;
-											}
-										} else {
-											// Obfuscate all blocks
+							// Check if the block should be obfuscated for the default engine modes
+							if (obfuscateFlag) {
+								if (initialRadius == 0) {
+									// Do not interfere with PH
+									if (proximityHiderFlag && proximityHider.isEnabled()
+											&& proximityHider.isProximityObfuscated(y, blockData)) {
+										if (!areAjacentBlocksTransparent(manager, player.getWorld(), false, x, y, z,
+												1)) {
 											obfuscate = true;
 										}
 									} else {
-										// Check if any nearby blocks are transparent
-										if (!areAjacentBlocksTransparent(manager, player.getWorld(), false, x, y, z, initialRadius)) {
-											obfuscate = true;
-										}
+										// Obfuscate all blocks
+										obfuscate = true;
 									}
-								}
-
-								// Check if the block should be obfuscated because of proximity check
-								if (!obfuscate && proximityHiderFlag && proximityHider.isEnabled() && proximityHider.isProximityObfuscated(y, blockData)) {
-									BlockCoord block = new BlockCoord(x, y, z);
-									if (block != null) {
-										proximityBlocks.add(block);
-									}
-
-									obfuscate = true;
-									if (proximityHider.isUseSpecialBlock()) {
-										specialObfuscate = true;
-									}
-								}
-
-								// Check if the block is obfuscated
-								if (obfuscate && (!worldConfig.isBypassObfuscationForSignsWithText() || this.canObfuscate(player, world, chunkData, x, y, z, blockData))) {
-									if (specialObfuscate) {
-										// Proximity hider
-										blockData = proximityHider.getSpecialBlockID();
-									} else {
-										if (engineMode == 1) {
-											// Engine mode 1, replace with stone
-											blockData = worldConfig.getMode1BlockId();
-										} else if (engineMode == 2) {
-											// Ending mode 2, replace with random block
-											if (randomBlocksLength > 1) {
-												randomIncrement = CalculationsUtil.increment(randomIncrement, randomBlocksLength);
-											}
-
-											blockData = worldConfig.getRandomBlock(randomIncrement, randomAlternate);
-											randomAlternate = !randomAlternate;
-										}
-										// Anti texturepack and freecam
-										if (worldConfig.isAntiTexturePackAndFreecam()) {
-											// Add random air blocks
-											randomIncrement2 = random(incrementMax);
-
-											if (randomIncrement2 == 0) {
-												randomCave = 1 + random(3);
-											}
-
-											if (randomCave > 0) {
-												blockData = nmsManager.getCaveAirBlockId();
-												randomCave--;
-											}
-										}
-									}
-								}
-
-								// Check if the block should be obfuscated because of the darkness
-								if (!obfuscate && darknessBlockFlag && worldConfig.isDarknessHideBlocks()) {
-									if (!areAjacentBlocksBright(player.getWorld(), x, y, z, 1)) {
-										// Hide block, setting it to air
-										blockData = nmsManager.getCaveAirBlockId();
+								} else {
+									// Check if any nearby blocks are transparent
+									if (!areAjacentBlocksTransparent(manager, player.getWorld(), false, x, y, z,
+											initialRadius)) {
 										obfuscate = true;
 									}
 								}
+							}
 
-								if (obfuscate && tileEntityFlag) {
-									removedEntities.add(new BlockCoord(x, y, z));
+							// Check if the block should be obfuscated because of proximity check
+							if (!obfuscate && proximityHiderFlag && proximityHider.isEnabled()
+									&& proximityHider.isProximityObfuscated(y, blockData)) {
+								BlockCoord block = new BlockCoord(x, y, z);
+								if (block != null) {
+									proximityBlocks.add(block);
+								}
+
+								obfuscate = true;
+								if (proximityHider.isUseSpecialBlock()) {
+									specialObfuscate = true;
 								}
 							}
 
-							if (entry.getKey()) {
-								chunkData.useCache = false;
-								chunkData.worldGuardRegion = true;
-								worldGuard = true;
+							// Check if the block is obfuscated
+							if (obfuscate && (!worldConfig.isBypassObfuscationForSignsWithText()
+									|| this.canObfuscate(player, world, chunkData, x, y, z, blockData))) {
+								if (specialObfuscate) {
+									// Proximity hider
+									blockData = proximityHider.getSpecialBlockID();
+								} else {
+									if (engineMode == 1) {
+										// Engine mode 1, replace with stone
+										blockData = worldConfig.getMode1BlockId();
+									} else if (engineMode == 2) {
+										// Ending mode 2, replace with random block
+										if (randomBlocksLength > 1) {
+											randomIncrement = CalculationsUtil.increment(randomIncrement,
+													randomBlocksLength);
+										}
+
+										blockData = worldConfig.getRandomBlock(randomIncrement, randomAlternate);
+										randomAlternate = !randomAlternate;
+									}
+									// Anti texturepack and freecam
+									if (worldConfig.isAntiTexturePackAndFreecam()) {
+										// Add random air blocks
+										randomIncrement2 = random(incrementMax);
+
+										if (randomIncrement2 == 0) {
+											randomCave = 1 + random(3);
+										}
+
+										if (randomCave > 0) {
+											blockData = nmsManager.getCaveAirBlockId();
+											randomCave--;
+										}
+									}
+								}
+							}
+
+							// Check if the block should be obfuscated because of the darkness
+							if (!obfuscate && darknessBlockFlag && worldConfig.isDarknessHideBlocks()) {
+								if (!areAjacentBlocksBright(player.getWorld(), x, y, z, 1)) {
+									// Hide block, setting it to air
+									blockData = nmsManager.getCaveAirBlockId();
+									obfuscate = true;
+								}
+							}
+
+							if (obfuscate && tileEntityFlag) {
+								removedEntities.add(new BlockCoord(x, y, z));
 							}
 
 							if (offsetY == 0 && offsetZ == 0 && offsetX == 0) {
@@ -320,7 +271,6 @@ public class Calculations extends CraftHandler implements ICalculations {
 		}
 
 		plugin.getProximityHiderHandler().addProximityBlocks(player, chunkData.chunkX, chunkData.chunkZ, proximityBlocks);
-		System.out.println("Time needed: " + (System.currentTimeMillis() - startTime) + "ms (WorldGuard: " + worldGuard + ")");
 		return output;
 	}
 
@@ -331,7 +281,8 @@ public class Calculations extends CraftHandler implements ICalculations {
 
 		NbtCompound tag = this.getBlockEntity(chunkData, x, y, z);
 
-		return tag == null || this.isSignTextEmpty(tag, "Text1") && this.isSignTextEmpty(tag, "Text2") && this.isSignTextEmpty(tag, "Text3") && this.isSignTextEmpty(tag, "Text4");
+		return tag == null || this.isSignTextEmpty(tag, "Text1") && this.isSignTextEmpty(tag, "Text2")
+				&& this.isSignTextEmpty(tag, "Text3") && this.isSignTextEmpty(tag, "Text4");
 	}
 
 	private boolean isSignTextEmpty(NbtCompound compound, String key) {
@@ -373,7 +324,7 @@ public class Calculations extends CraftHandler implements ICalculations {
 	}
 
 	private ObfuscatedCachedChunk tryUseCache(ChunkData chunkData, Player player) {
-		if (!this.config.isUseCache() || chunkData.worldGuardRegion)
+		if (!this.config.isUseCache())
 			return null;
 
 		chunkData.useCache = true;
@@ -381,9 +332,11 @@ public class Calculations extends CraftHandler implements ICalculations {
 		// Hash the chunk
 		long hash = CalculationsUtil.Hash(chunkData.data);
 		// Get cache folder
-		File cacheFolder = new File(this.plugin.getObfuscatedDataCacheHandler().getCacheFolder(), player.getWorld().getName());
+		File cacheFolder = new File(this.plugin.getObfuscatedDataCacheHandler().getCacheFolder(),
+				player.getWorld().getName());
 		// Create cache objects
-		ObfuscatedCachedChunk cache = new ObfuscatedCachedChunk(this.plugin, cacheFolder, chunkData.chunkX, chunkData.chunkZ);
+		ObfuscatedCachedChunk cache = new ObfuscatedCachedChunk(this.plugin, cacheFolder, chunkData.chunkX,
+				chunkData.chunkZ);
 
 		// Check if hash is consistent
 		cache.read();
@@ -395,7 +348,8 @@ public class Calculations extends CraftHandler implements ICalculations {
 			ArrayList<BlockCoord> proximityBlocks = this.getCoordFromArray(proximityList);
 
 			// ProximityHider add blocks
-			this.plugin.getProximityHiderHandler().addProximityBlocks(player, chunkData.chunkX, chunkData.chunkZ, proximityBlocks);
+			this.plugin.getProximityHiderHandler().addProximityBlocks(player, chunkData.chunkX, chunkData.chunkZ,
+					proximityBlocks);
 
 			// Hash match, use the cached data instead and skip calculations
 			return cache;
@@ -407,7 +361,8 @@ public class Calculations extends CraftHandler implements ICalculations {
 		return cache;
 	}
 
-	public boolean areAjacentBlocksTransparent(IChunkMap manager, World world, boolean checkCurrentBlock, int x, int y, int z, int countdown) throws IOException {
+	public boolean areAjacentBlocksTransparent(IChunkMap manager, World world, boolean checkCurrentBlock, int x, int y,
+			int z, int countdown) throws IOException {
 		if (y >= world.getMaxHeight() || y < 0) {
 			return true;
 		}
@@ -474,9 +429,5 @@ public class Calculations extends CraftHandler implements ICalculations {
 
 	private int random(int max) {
 		return this.random.nextInt(max);
-	}
-
-	private interface WorldGuardCheck {
-		Map.Entry<Boolean, Boolean> isInRegionAndHasPermission(Player player, World world, int x, int y, int z);
 	}
 }
